@@ -1,0 +1,77 @@
+// app/page.jsx
+"use client";
+import { useState } from "react";
+
+export default function Home() {
+  const [videoUrl, setVideoUrl] = useState("");
+  const [start, setStart] = useState(0);
+  const [end, setEnd] = useState(30);
+  const [clipUrl, setClipUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function createClip() {
+    setLoading(true);
+
+    const res = await fetch("http://localhost:8000/api/clip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoUrl, start, end, userId: "demo" })
+    });
+
+    const data = await res.json();
+    setClipUrl(data.clipUrl);
+    setLoading(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center">
+      <h1 className="text-3xl font-bold mb-6">Viral Clip Studio</h1>
+
+      <input
+        className="w-full max-w-xl p-3 rounded bg-gray-800 mb-4"
+        placeholder="Paste YouTube/TikTok URL"
+        value={videoUrl}
+        onChange={(e) => setVideoUrl(e.target.value)}
+      />
+
+      <div className="flex gap-6 mb-4">
+        <div>
+          <label>Start (sec)</label>
+          <input
+            type="number"
+            className="w-24 p-2 rounded bg-gray-800"
+            value={start}
+            onChange={(e) => setStart(Number(e.target.value))}
+          />
+        </div>
+
+        <div>
+          <label>End (sec)</label>
+          <input
+            type="number"
+            className="w-24 p-2 rounded bg-gray-800"
+            value={end}
+            onChange={(e) => setEnd(Number(e.target.value))}
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={createClip}
+        disabled={loading}
+        className="px-6 py-3 bg-purple-600 rounded hover:bg-purple-700"
+      >
+        {loading ? "Processing…" : "Create Clip"}
+      </button>
+
+      {clipUrl && (
+        <div className="mt-8 w-full max-w-xl">
+          <h2 className="mb-2 font-semibold">Your Clip</h2>
+          <video controls className="w-full rounded">
+            <source src={clipUrl} type="video/mp4" />
+          </video>
+        </div>
+      )}
+    </main>
+  );
+}
