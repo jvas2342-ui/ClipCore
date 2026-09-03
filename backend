@@ -1,0 +1,49 @@
+// server/index.js
+import express from 'express';
+import cors from 'cors';
+import { spawn } from 'child_process';
+import { v4 as uuid } from 'uuid';
+import path from 'path';
+import fs from 'fs';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.post('/api/clip', async (req, res) => {
+  const { videoUrl, start, end, userId } = req.body;
+
+  if (!videoUrl || start == null || end == null) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  const jobId = uuid();
+  const outputPath = path.join('clips', `${jobId}.mp4`);
+
+  // Download video with yt-dlp
+  const download = spawn('yt-dlp', ['-f', 'mp4', '-o', '-', videoUrl]);
+
+  // Clip with ffmpeg
+  const ffmpeg = spawn('ffmpeg', [
+    '-i', 'pipe:0',
+    '-ss', String(start),
+    '-to', String(end),
+    '-c', 'copy',
+    outputPath
+  ]);
+
+  download.stdout.pipe(ffmpeg.stdin);
+
+  ffmpeg.on('close', async (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: 'Clip failed' });
+    }
+
+    // TODO: Upload to S3 or Supabase
+    const clipUrl = `https://your-cdn.com/${jobId}.mp4`;
+
+    res.json({ jobId, clipUrl });
+  });
+});
+
+app.listen(8000, () => console.log('API running on :8000'));
